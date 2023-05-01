@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const memeImage = document.getElementById("meme-image");
   const memeText = document.getElementById("meme-text");
   const memeContainer = document.getElementById("meme-container");
-  const loading = document.getElementById("loading");
+  const loadingIndicator = document.getElementById("loading-indicator");
 
   memeForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!prompt) return;
 
     generateButton.disabled = true;
-    loading.classList.remove("hidden");
+    loadingIndicator.style.display = "block";
 
     try {
       const response = await fetch("/generate-meme", {
@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Error:", error);
     } finally {
       generateButton.disabled = false;
-      loading.classList.add("hidden");
+      loadingIndicator.style.display = "none";
     }
   });
 });
