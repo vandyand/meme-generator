@@ -8,13 +8,13 @@ Response Format Schema:
 }
 
 Here is the "general" prompt which provides a description of the image content. Please use your creativity and humor to generate a funny and engaging meme based on the given prompt. 
-Note: visual descriptions should have no "caption" or "text" in it.
+Note: visual descriptions should have no "caption" and no "text" and no "speech bubble" and no "thought bubble" strings in it.
 
 "GeneralPrompt": ${generalTextPrompt.toUpperCase()}
 
 Please return only JSON data and no plain text.`;
 
 const getImagePrompt = (visualDescription) =>
-  `${visualDescription.toUpperCase()} whimsical artistic illustration cartoon expressive`;
+  `${visualDescription.toUpperCase()} whimsical artistic illustration cartoon detailed`;
 
 module.exports = { getTextPrompt, getImagePrompt };

@@ -27,8 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const data = await response.json();
         memeText.innerText = data.memeText.memeText;
         memeImage.src = data.imageUrl;
-        memeText.classList.remove("hidden");
-        memeImage.classList.remove("hidden");
+        memeContainer.classList.remove("hidden");
       } else {
         console.error("Failed to generate meme");
       }
