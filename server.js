@@ -4,11 +4,19 @@ const express = require("express");
 const axios = require("axios");
 const bodyParser = require("body-parser");
 const { getTextPrompt } = require("./prompt");
+const cloudinary = require("cloudinary").v2;
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: "10mb" }));
+app.use(bodyParser.urlencoded({ limit: "10mb", extended: true }));
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 const generateText = async (
   prompt,
@@ -52,10 +60,21 @@ const generateImage = async (prompt, n = 1, size = "1024x1024") => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         },
+        responseType: "json",
       }
     );
 
-    return response.data.data;
+    const imageUrl = response.data.data[0].url;
+
+    const imageResponse = await axios.get(imageUrl, {
+      responseType: "arraybuffer",
+    });
+
+    const base64Image = Buffer.from(imageResponse.data, "binary").toString(
+      "base64"
+    );
+
+    return base64Image;
   } catch (error) {
     console.error("Error generating image:", error);
     return null;
@@ -72,17 +91,31 @@ app.post("/generate-meme", async (req, res) => {
   const generatedText = JSON.parse(generatedTextResponse);
 
   try {
-    const generatedImage = await generateImage(generatedText.visualDescription);
-    console.log(generateImage);
-    const imageData = generatedImage[0];
+    const base64Image = await generateImage(generatedText.visualDescription);
 
     res.json({
       memeText: generatedText,
-      imageUrl: imageData.url,
+      imageBase64: base64Image,
     });
   } catch (error) {
     console.error("Error generating meme:", error);
     res.status(500).send("Error generating meme");
+  }
+});
+
+app.post("/upload-meme", async (req, res) => {
+  try {
+    const result = await cloudinary.uploader.upload(
+      `data:image/png;base64,${req.body.imageBase64}`,
+      {
+        upload_preset: "ml_default",
+      }
+    );
+
+    res.json({ imageUrl: result.secure_url });
+  } catch (error) {
+    console.error("Error uploading to Cloudinary:", error);
+    res.status(500).send("Error uploading to Cloudinary");
   }
 });
 

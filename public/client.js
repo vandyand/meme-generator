@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const memeImage = document.getElementById("meme-image");
   const memeText = document.getElementById("meme-text");
   const memeContainer = document.getElementById("meme-container");
+  const memeWrapper = document.getElementById("meme-wrapper");
   const loadingIndicator = document.getElementById("loading-indicator");
 
   memeForm.addEventListener("submit", async (event) => {
@@ -26,16 +27,38 @@ document.addEventListener("DOMContentLoaded", () => {
       if (response.ok) {
         const data = await response.json();
         memeText.innerText = data.memeText.memeText;
-        memeImage.src = data.imageUrl;
+        memeImage.src = `data:image/png;base64,${data.imageBase64}`;
         memeContainer.classList.remove("hidden");
 
         memeImage.addEventListener("load", async () => {
-          // Wait for a few milliseconds to make sure everything is rendered
-          await new Promise((resolve) => setTimeout(resolve, 10000));
+          domtoimage
+            .toPng(memeWrapper)
+            .then(async function (dataUrl) {
+              const base64Data = dataUrl.replace(
+                /^data:image\/png;base64,/,
+                ""
+              );
 
-          const screenshot = await html2canvas(memeContainer);
-          const imgData = screenshot.toDataURL("image/png");
-          console.log(imgData);
+              try {
+                const response = await fetch("/upload-meme", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ imageBase64: base64Data }),
+                });
+
+                if (response.ok) {
+                  const data = await response.json();
+                  console.log("Image URL:", data.imageUrl);
+                } else {
+                  console.error("Failed to upload meme");
+                }
+              } catch (error) {
+                console.error("Error:", error);
+              }
+            })
+            .catch(function (error) {
+              console.error("Error:", error);
+            });
         });
       } else {
         console.error("Failed to generate meme");
