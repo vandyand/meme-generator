@@ -28,6 +28,15 @@ document.addEventListener("DOMContentLoaded", () => {
         memeText.innerText = data.memeText.memeText;
         memeImage.src = data.imageUrl;
         memeContainer.classList.remove("hidden");
+
+        memeImage.addEventListener("load", async () => {
+          // Wait for a few milliseconds to make sure everything is rendered
+          await new Promise((resolve) => setTimeout(resolve, 10000));
+
+          const screenshot = await html2canvas(memeContainer);
+          const imgData = screenshot.toDataURL("image/png");
+          console.log(imgData);
+        });
       } else {
         console.error("Failed to generate meme");
       }
