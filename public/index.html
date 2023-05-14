@@ -4,13 +4,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Meme Generator</title>
+  <title>Dumb Meme Generator</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css" rel="stylesheet">
 </head>
 
 <body class="bg-gray-100">
   <div class="container mx-auto px-4 max-w-8xl">
-    <h1 class="text-4xl font-bold mb-4 mt-8 text-center">Meme Generator</h1>
+    <h1 class="text-4xl font-bold mb-4 mt-8 text-center">Dumb Meme Generator</h1>
     <form id="meme-form" class="text-center mb-4">
       <input type="text" id="prompt-input" placeholder="Enter meme description..."
         class="w-64 bg-white shadow-md rounded-lg border border-gray-300 p-2 mr-2" />
@@ -29,6 +29,13 @@
         </figcaption>
       </div>
     </figure>
+    <div id="meme-url-container" class="text-center mt-4 relative">
+      <span id="copy-message" class="hidden">(Click image to copy url)</span>
+      <div id="tooltip" class="hidden absolute bg-green-500 text-white px-2 py-1 rounded text-xs bottom-full left-1/2 transform -translate-x-1/2 mb-2 whitespace-nowrap max-h-5">
+        Copied!
+      </div>
+    </div>
+    
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
   <script src="/client.js"></script>

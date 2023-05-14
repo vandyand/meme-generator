@@ -7,6 +7,45 @@ document.addEventListener("DOMContentLoaded", () => {
   const memeContainer = document.getElementById("meme-container");
   const memeWrapper = document.getElementById("meme-wrapper");
   const loadingIndicator = document.getElementById("loading-indicator");
+  const memeUrlContainer = document.getElementById("meme-url-container");
+  const tooltip = document.getElementById("tooltip");
+  const copyMessage = document.getElementById("copy-message");
+
+  function copyToClipboard(text) {
+    const el = document.createElement("textarea");
+    el.value = text;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand("copy");
+    document.body.removeChild(el);
+  }
+
+  function showTooltip(event) {
+    const tooltipX =
+      event.clientX - memeUrlContainer.getBoundingClientRect().left;
+    const tooltipY =
+      event.clientY - memeUrlContainer.getBoundingClientRect().top;
+    tooltip.style.left = `${tooltipX}px`;
+    tooltip.style.top = `${tooltipY}px`;
+    tooltip.classList.remove("hidden");
+
+    setTimeout(() => {
+      tooltip.classList.add("hidden");
+    }, 2000);
+  }
+
+  function handleClickToCopy(event) {
+    if (
+      event.target === memeImage ||
+      event.target === memeText ||
+      event.target === copyMessage
+    ) {
+      copyToClipboard(copyMessage.dataset.url);
+      showTooltip(event);
+    }
+  }
+
+  memeContainer.addEventListener("click", handleClickToCopy);
 
   memeForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -48,7 +87,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (response.ok) {
                   const data = await response.json();
+                  copyMessage.classList.remove("hidden");
+                  copyMessage.dataset.url = data.imageUrl;
                   console.log("Image URL:", data.imageUrl);
+                  // memeUrlContainer.innerText = `Image URL: ${data.imageUrl}`;
                 } else {
                   console.error("Failed to upload meme");
                 }
