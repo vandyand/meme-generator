@@ -47,13 +47,55 @@ document.addEventListener("DOMContentLoaded", () => {
 
   memeContainer.addEventListener("click", handleClickToCopy);
 
-  memeForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
+  function setButtonState(disabled) {
+    generateButton.disabled = disabled;
+    if (disabled) {
+      generateButton.classList.add("cursor-wait", "opacity-50");
+    } else {
+      generateButton.classList.remove("cursor-wait", "opacity-50");
+    }
+  }
 
+  let currentLoadListener = null;
+
+  function handleImageLoad() {
+    // Use requestAnimationFrame to wait for the next repaint
+    requestAnimationFrame(() => {
+      domtoimage.toPng(memeWrapper)
+        .then(async (dataUrl) => {
+          const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
+
+          try {
+            const uploadResponse = await fetch("/upload-meme", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ imageBase64: base64Data }),
+            });
+
+            if (uploadResponse.ok) {
+              const uploadData = await uploadResponse.json();
+              copyMessage.classList.remove("hidden");
+              copyMessage.dataset.url = uploadData.imageUrl;
+              console.log("Image URL:", uploadData.imageUrl);
+            } else {
+              console.error("Failed to upload meme");
+            }
+          } catch (error) {
+            console.error("Error:", error);
+          }
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+        });
+    });
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
     const prompt = promptInput.value;
     if (!prompt) return;
 
-    generateButton.disabled = true;
+    setButtonState(true);
     loadingIndicator.style.display = "block";
 
     try {
@@ -66,50 +108,31 @@ document.addEventListener("DOMContentLoaded", () => {
       if (response.ok) {
         const data = await response.json();
         memeText.innerText = data.memeText.memeText;
+        
+        // Remove existing listener if there is one
+        if (currentLoadListener) {
+          memeImage.removeEventListener("load", currentLoadListener);
+        }
+        
+        // Set new listener
+        currentLoadListener = handleImageLoad;
+        memeImage.addEventListener("load", currentLoadListener);
+
         memeImage.src = `data:image/png;base64,${data.imageBase64}`;
         memeContainer.classList.remove("hidden");
-
-        memeImage.addEventListener("load", async () => {
-          domtoimage
-            .toPng(memeWrapper)
-            .then(async function (dataUrl) {
-              const base64Data = dataUrl.replace(
-                /^data:image\/png;base64,/,
-                ""
-              );
-
-              try {
-                const response = await fetch("/upload-meme", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ imageBase64: base64Data }),
-                });
-
-                if (response.ok) {
-                  const data = await response.json();
-                  copyMessage.classList.remove("hidden");
-                  copyMessage.dataset.url = data.imageUrl;
-                  console.log("Image URL:", data.imageUrl);
-                  // memeUrlContainer.innerText = `Image URL: ${data.imageUrl}`;
-                } else {
-                  console.error("Failed to upload meme");
-                }
-              } catch (error) {
-                console.error("Error:", error);
-              }
-            })
-            .catch(function (error) {
-              console.error("Error:", error);
-            });
-        });
       } else {
         console.error("Failed to generate meme");
       }
     } catch (error) {
       console.error("Error:", error);
     } finally {
-      generateButton.disabled = false;
+      setButtonState(false);
       loadingIndicator.style.display = "none";
     }
-  });
+  }
+
+  memeForm.addEventListener("submit", handleSubmit);
+
+  // Initialize button state
+  setButtonState(false);
 });

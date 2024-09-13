@@ -12,6 +12,11 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
     />
+    <style>
+      .cursor-wait {
+        cursor: wait;
+      }
+    </style>
   </head>
 
   <body class="bg-gray-100">
@@ -27,7 +32,7 @@
         <button
           id="generate-button"
           type="submit"
-          class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ml-2"
+          class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ml-2 transition-opacity duration-300 ease-in-out"
         >
           Generate Meme
         </button>
