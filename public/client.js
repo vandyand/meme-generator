@@ -6,10 +6,26 @@ document.addEventListener("DOMContentLoaded", () => {
   const memeText = document.getElementById("meme-text");
   const memeContainer = document.getElementById("meme-container");
   const memeWrapper = document.getElementById("meme-wrapper");
-  const loadingIndicator = document.getElementById("loading-indicator");
-  const memeUrlContainer = document.getElementById("meme-url-container");
-  const tooltip = document.getElementById("tooltip");
+  const loadingBarContainer = document.getElementById("loading-bar-container");
+  const loadingBar = document.getElementById("loading-bar");
   const copyMessage = document.getElementById("copy-message");
+  const loadingPercentage = document.getElementById("loading-percentage");
+  const loadingMessageContainer = document.getElementById("loading-message");
+  let incrementDelay = 500; // Initial delay in ms
+  let incrementAmount = 5; // Initial increment percentage
+  let loadingMessages = [];
+  let currentLoadingMessage = "";
+  let messageInterval = null;
+
+  // Fetch loading messages from the JSON file
+  fetch('/fun_loading_messages.json')
+    .then(response => response.json())
+    .then(data => {
+      loadingMessages = data;
+    })
+    .catch(error => {
+      console.error("Error fetching loading messages:", error);
+    });
 
   function copyToClipboard(text) {
     const el = document.createElement("textarea");
@@ -57,6 +73,67 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   let currentLoadListener = null;
+  let loadingInterval = null;
+  let loadingProgress = 0;
+
+  function displayRandomLoadingMessage() {
+    if (loadingMessages.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * loadingMessages.length);
+    currentLoadingMessage = loadingMessages[randomIndex];
+    loadingMessageContainer.innerText = currentLoadingMessage;
+  }
+
+  function startLoadingMessages() {
+    loadingMessageContainer.classList.remove("hidden");
+    displayRandomLoadingMessage();
+    // Change the message every 3 seconds
+    messageInterval = setInterval(displayRandomLoadingMessage, 3000);
+  }
+
+  function stopLoadingMessages() {
+    clearInterval(messageInterval);
+    loadingMessageContainer.classList.add("hidden");
+    loadingMessageContainer.innerText = "";
+  }
+
+  function startLoadingBar() {
+    loadingBarContainer.classList.remove("hidden");
+    loadingProgress = 0;
+    loadingBar.style.width = `${loadingProgress}%`;
+    loadingPercentage.innerText = `${loadingProgress}%`;
+    incrementDelay = 500;
+    incrementAmount = 5;
+
+    {{ 
+      // Start displaying loading messages
+      startLoadingMessages();
+    }}
+
+    loadingInterval = setInterval(() => {
+      // Update progress with exponential slowdown
+      loadingProgress += incrementAmount;
+      if (loadingProgress >= 100) {
+        loadingProgress = 99;
+      }
+      loadingBar.style.width = `${loadingProgress}%`;
+      loadingPercentage.innerText = `${Math.floor(loadingProgress)}%`;
+
+      // Decrease increment amount to slow down
+      incrementAmount = Math.max(1, incrementAmount * 0.95);
+      // Optionally adjust delay if needed
+    }, incrementDelay);
+  }
+
+  function stopLoadingBar() {
+    clearInterval(loadingInterval);
+    loadingBarContainer.classList.add("hidden");
+    loadingPercentage.innerText = `0%`;
+
+    {{ 
+      // Stop displaying loading messages
+      stopLoadingMessages();
+    }}
+  }
 
   function handleImageLoad() {
     // Use requestAnimationFrame to wait for the next repaint
@@ -96,7 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!prompt) return;
 
     setButtonState(true);
-    loadingIndicator.style.display = "block";
+    startLoadingBar();
 
     try {
       const response = await fetch("/generate-meme", {
@@ -126,8 +203,8 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       console.error("Error:", error);
     } finally {
+      stopLoadingBar();
       setButtonState(false);
-      loadingIndicator.style.display = "none";
     }
   }
 

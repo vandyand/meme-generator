@@ -38,10 +38,21 @@
         </button>
       </form>
       <div
-        id="loading-indicator"
-        style="display: none"
-        class="w-8 h-8 mb-4 border-t-2 border-blue-500 rounded-full animate-spin mx-auto"
-      ></div>
+        id="loading-bar-container"
+        class="w-64 bg-gray-200 rounded-full h-4 mx-auto hidden mb-4 flex items-center"
+      >
+        <div
+          id="loading-bar"
+          class="bg-blue-500 h-4 rounded-full"
+          style="width: 0%"
+        ></div>
+        <span id="loading-percentage" class="ml-2 text-sm text-gray-700"
+          >0%</span
+        >
+      </div>
+      <div id="loading-message" class="text-center text-gray-700 mb-4 hidden">
+        <!-- Loading messages will be displayed here -->
+      </div>
       <figure id="meme-container" class="relative max-w-xl mx-auto hidden">
         <div id="meme-wrapper" class="relative w-full">
           <img id="meme-image" class="w-full h-auto block" />
