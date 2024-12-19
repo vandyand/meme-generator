@@ -18,12 +18,12 @@ document.addEventListener("DOMContentLoaded", () => {
   let messageInterval = null;
 
   // Fetch loading messages from the JSON file
-  fetch('/fun_loading_messages.json')
-    .then(response => response.json())
-    .then(data => {
+  fetch("/fun_loading_messages.json")
+    .then((response) => response.json())
+    .then((data) => {
       loadingMessages = data;
     })
-    .catch(error => {
+    .catch((error) => {
       console.error("Error fetching loading messages:", error);
     });
 
@@ -37,6 +37,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function showTooltip(event) {
+    const tooltip = document.getElementById("tooltip");
+    const memeUrlContainer = document.getElementById("meme-url-container");
     const tooltipX =
       event.clientX - memeUrlContainer.getBoundingClientRect().left;
     const tooltipY =
@@ -104,10 +106,12 @@ document.addEventListener("DOMContentLoaded", () => {
     incrementDelay = 500;
     incrementAmount = 5;
 
-    {{ 
-      // Start displaying loading messages
-      startLoadingMessages();
-    }}
+    {
+      {
+        // Start displaying loading messages
+        startLoadingMessages();
+      }
+    }
 
     loadingInterval = setInterval(() => {
       // Update progress with exponential slowdown
@@ -129,16 +133,19 @@ document.addEventListener("DOMContentLoaded", () => {
     loadingBarContainer.classList.add("hidden");
     loadingPercentage.innerText = `0%`;
 
-    {{ 
-      // Stop displaying loading messages
-      stopLoadingMessages();
-    }}
+    {
+      {
+        // Stop displaying loading messages
+        stopLoadingMessages();
+      }
+    }
   }
 
   function handleImageLoad() {
     // Use requestAnimationFrame to wait for the next repaint
     requestAnimationFrame(() => {
-      domtoimage.toPng(memeWrapper)
+      domtoimage
+        .toPng(memeWrapper)
         .then(async (dataUrl) => {
           const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
 
@@ -185,12 +192,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (response.ok) {
         const data = await response.json();
         memeText.innerText = data.memeText.memeText;
-        
+
         // Remove existing listener if there is one
         if (currentLoadListener) {
           memeImage.removeEventListener("load", currentLoadListener);
         }
-        
+
         // Set new listener
         currentLoadListener = handleImageLoad;
         memeImage.addEventListener("load", currentLoadListener);
