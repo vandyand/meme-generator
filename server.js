@@ -51,6 +51,7 @@ const generateImage = async (prompt, n = 1, size = "1024x1024") => {
     const response = await axios.post(
       "https://api.openai.com/v1/images/generations",
       {
+        model: "dall-e-3",
         prompt,
         n,
         size,
