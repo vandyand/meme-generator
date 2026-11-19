@@ -1,6 +1,6 @@
 # Meme Generator
 
-This project is a meme generator that uses OpenAI's GPT and DALL-E models to create humorous memes based on user prompts.
+This project is a meme generator that uses OpenAI's text and image models to create humorous memes. The picture and the caption are generated independently, so you can make an image-only meme, a caption on an existing picture, or both together.
 
 ## Setup
 
@@ -21,8 +21,14 @@ This project is a meme generator that uses OpenAI's GPT and DALL-E models to cre
    CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
    CLOUDINARY_API_KEY=your_cloudinary_api_key
    CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+
+   # Optional overrides (defaults shown)
+   # OPENAI_TEXT_MODEL=gpt-6-luna
+   # OPENAI_IMAGE_MODEL=gpt-image-2.6-sunburst
+   # OPENAI_IMAGE_SIZE=1024x1024
+   # OPENAI_TEXT_TEMPERATURE=   (unset = model default; some reasoning models reject it)
    ```
-   Replace the placeholder values with your actual API keys.
+   Replace the placeholder values with your actual API keys. The older `gpt-3.5-turbo` and `dall-e-3` models have been retired by OpenAI; set the model variables if you want to use a different current model.
 
 4. Start the development server:
    ```
@@ -33,16 +39,45 @@ This project is a meme generator that uses OpenAI's GPT and DALL-E models to cre
 
 ## Usage
 
-1. Enter a meme description in the input field.
-2. Click the "Generate Meme" button.
-3. Wait for the meme to be generated and displayed.
-4. Click on the generated meme to copy its URL to the clipboard.
+The form has two independent parts. Fill in either one or both, then click **Generate Meme**.
+
+- **Image**: describe the picture you want. Leave it empty to keep the current picture, for example to try a new caption on it.
+- **Caption**: pick how the caption is made:
+  - **AI writes it from a prompt**: describe the joke and the AI writes the caption. It also sees your image prompt, if you gave one.
+  - **Use my exact text**: the text is used word for word, with no AI call.
+
+  Leave the caption empty for an **image-only** meme with no caption bar.
+
+When a meme is shown:
+
+- **Edit the caption in place**: click the caption, or the **Edit caption** link under the meme, and type. Press **Enter** or click away to apply the edit, or press **Esc** to cancel. The meme is re-rendered and re-uploaded without generating a new image. Clearing the text removes the caption bar.
+- **Copy the link**: click the image to copy its Cloudinary URL to the clipboard. The link is updated each time the meme changes.
+
+If you only give a caption and there is no picture yet, the caption is shown on a plain dark panel.
+
+## API
+
+| Route | Body | Response |
+| --- | --- | --- |
+| `POST /generate-image` | `{ "prompt": string }` | `{ "imageBase64": string }` |
+| `POST /generate-caption` | `{ "prompt": string, "imagePrompt"?: string }` | `{ "caption": string }` |
+| `POST /upload-meme` | `{ "imageBase64": string }` | `{ "imageUrl": string }` |
+
+An empty prompt returns `400`. An upstream OpenAI failure returns `502`. The old combined `POST /generate-meme` route has been removed.
+
+## Tests
+
+```
+npm test
+```
+
+The tests use the built-in `node:test` runner and mock the OpenAI and Cloudinary calls, so no API keys are needed.
 
 ## Technologies Used
 
 - Node.js
 - Express.js
-- OpenAI API (GPT-3.5 and DALL-E)
+- OpenAI API (Chat Completions and GPT Image models)
 - Cloudinary
 - TailwindCSS
 

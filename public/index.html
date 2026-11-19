@@ -16,26 +16,71 @@
       .cursor-wait {
         cursor: wait;
       }
+      #meme-text {
+        outline: none;
+        cursor: text;
+      }
+      #meme-text:focus {
+        background-color: rgba(255, 255, 255, 0.08);
+      }
     </style>
   </head>
 
-  <body class="bg-gray-100">
-    <div class="container mx-auto px-4 max-w-8xl">
+  <body class="bg-gray-100 min-h-screen flex flex-col">
+    <div class="container mx-auto px-4 max-w-8xl flex-grow">
       <h1 class="text-4xl font-bold mb-4 mt-8 text-center">Meme Generator</h1>
-      <form id="meme-form" class="text-center mb-4">
-        <input
-          type="text"
-          id="prompt-input"
-          placeholder="Enter meme description..."
-          class="w-64 bg-white shadow-md rounded-lg border border-gray-300 p-2 mr-2"
-        />
-        <button
-          id="generate-button"
-          type="submit"
-          class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ml-2 transition-opacity duration-300 ease-in-out"
-        >
-          Generate Meme
-        </button>
+      <form id="meme-form" class="max-w-xl mx-auto mb-4 space-y-3">
+        <div>
+          <label for="image-prompt-input" class="block font-bold mb-1"
+            >Image</label
+          >
+          <input
+            type="text"
+            id="image-prompt-input"
+            placeholder="Describe the picture... (leave empty to keep the current image)"
+            class="w-full bg-white shadow-md rounded-lg border border-gray-300 p-2"
+          />
+        </div>
+        <fieldset>
+          <legend class="font-bold mb-1">Caption</legend>
+          <div class="flex flex-wrap gap-4 mb-1 text-sm text-gray-700">
+            <label class="inline-flex items-center">
+              <input
+                type="radio"
+                name="caption-mode"
+                value="prompt"
+                class="mr-1"
+                checked
+              />
+              AI writes it from a prompt
+            </label>
+            <label class="inline-flex items-center">
+              <input
+                type="radio"
+                name="caption-mode"
+                value="direct"
+                class="mr-1"
+              />
+              Use my exact text
+            </label>
+          </div>
+          <input
+            type="text"
+            id="caption-input"
+            placeholder="What should the caption be about? (leave empty for no caption)"
+            class="w-full bg-white shadow-md rounded-lg border border-gray-300 p-2"
+          />
+        </fieldset>
+        <div class="text-center">
+          <button
+            id="generate-button"
+            type="submit"
+            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-opacity duration-300 ease-in-out"
+          >
+            Generate Meme
+          </button>
+        </div>
+        <p id="error-message" class="text-center text-red-600 hidden"></p>
       </form>
       <div
         id="loading-bar-container"
@@ -56,18 +101,34 @@
       <figure id="meme-container" class="relative max-w-xl mx-auto hidden">
         <div id="meme-wrapper" class="relative w-full">
           <img id="meme-image" class="w-full h-auto block" />
+          <div
+            id="meme-placeholder"
+            class="w-full bg-gray-800 hidden"
+            style="aspect-ratio: 1 / 1"
+          ></div>
           <figcaption
             id="meme-text-wrapper"
-            class="absolute bottom-0 left-0 right-0 mx-auto bg-black bg-opacity-50"
+            class="absolute bottom-0 left-0 right-0 mx-auto bg-black bg-opacity-50 hidden"
           >
             <p
               id="meme-text"
+              contenteditable="true"
+              spellcheck="false"
+              title="Click to edit the caption"
               class="text-2xl md:text-4xl text-white font-bold text-center p-4"
             ></p>
           </figcaption>
         </div>
       </figure>
       <div id="meme-url-container" class="text-center mt-4 relative">
+        <button
+          id="edit-caption-button"
+          type="button"
+          class="hidden text-blue-500 hover:underline text-sm mb-1"
+        >
+          Edit caption
+        </button>
+        <br />
         <span id="copy-message" class="hidden">(Click image to copy url)</span>
         <div
           id="tooltip"
@@ -78,7 +139,7 @@
       </div>
     </div>
 
-    <footer class="bg-gray-200 text-center py-4 mt-8 absolute bottom-0 w-full">
+    <footer class="bg-gray-200 text-center py-4 mt-8 w-full">
       <a
         href="https://buymeacoffee.com/vandyand"
         class="text-blue-500 hover:underline mx-2"

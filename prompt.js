@@ -1,20 +1,23 @@
-const getTextPrompt = (
-  generalTextPrompt
-) => `Generate a witty and humorous meme in JSON format using the ALL CAPS "GeneralPrompt" shown below. The return value should be JSON data in the provided example format.
-Response Format Schema:
-{
-  "memeText": (string),
-  "visualDescription": (string)
-}
+const getCaptionPrompt = (captionPrompt, imageDescription) => {
+  const context = imageDescription
+    ? `\nThe meme image shows: ${imageDescription}\n`
+    : "";
+  return `Write one short, witty, humorous meme caption based on the idea below.
+${context}
+Caption idea: ${captionPrompt}
 
-Here is the "general" prompt which provides a description of the image content. Please use your creativity and humor to generate a funny and engaging meme based on the given prompt. 
-Note: visual descriptions should have no "caption" and no "text" and no "speech bubble" and no "thought bubble" in it. The image generator prompt shouldn't require any text or words or captions in the image. Please include a lot of scenic information in the visualDescription so that the image generator knows about the setting for the image.
+Return only the caption text itself: no quotes, no hashtags, no explanation.`;
+};
 
-"GeneralPrompt": ${generalTextPrompt.toUpperCase()}
+const getImagePrompt = (imageDescription) =>
+  `${imageDescription}. Whimsical, detailed cartoon illustration with plenty of scenic detail. ` +
+  `Do not include any text, words, letters, captions, speech bubbles or thought bubbles in the image.`;
 
-Please return only JSON data and no plain text.`;
+// Models sometimes wrap the caption in quotes despite instructions.
+const cleanCaption = (text) =>
+  text
+    .trim()
+    .replace(/^["'“”‘’]+|["'“”‘’]+$/g, "")
+    .trim();
 
-const getImagePrompt = (visualDescription) =>
-  `${visualDescription.toUpperCase()} whimsical artistic illustration cartoon detailed`;
-
-module.exports = { getTextPrompt, getImagePrompt };
+module.exports = { getCaptionPrompt, getImagePrompt, cleanCaption };

@@ -1,6 +1,14 @@
 document.addEventListener("DOMContentLoaded", () => {
   const memeForm = document.getElementById("meme-form");
-  const promptInput = document.getElementById("prompt-input");
+  const imagePromptInput = document.getElementById("image-prompt-input");
+  const captionInput = document.getElementById("caption-input");
+  const captionModeInputs = document.querySelectorAll(
+    'input[name="caption-mode"]'
+  );
+  const errorMessage = document.getElementById("error-message");
+  const editCaptionButton = document.getElementById("edit-caption-button");
+  const memePlaceholder = document.getElementById("meme-placeholder");
+  const memeTextWrapper = document.getElementById("meme-text-wrapper");
   const generateButton = document.getElementById("generate-button");
   const memeImage = document.getElementById("meme-image");
   const memeText = document.getElementById("meme-text");
@@ -53,10 +61,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function handleClickToCopy(event) {
+    // Clicking the caption edits it; clicking the picture copies the link.
     if (
-      event.target === memeImage ||
-      event.target === memeText ||
-      event.target === copyMessage
+      (event.target === memeImage ||
+        event.target === memePlaceholder ||
+        event.target === copyMessage) &&
+      copyMessage.dataset.url
     ) {
       copyToClipboard(copyMessage.dataset.url);
       showTooltip(event);
@@ -141,12 +151,24 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function handleImageLoad() {
+  let uploadSeq = 0;
+
+  function captureAndUpload() {
+    const seq = ++uploadSeq;
+    // The copy link is stale until the new render has been uploaded.
+    copyMessage.classList.add("hidden");
+    delete copyMessage.dataset.url;
+
     // Use requestAnimationFrame to wait for the next repaint
     requestAnimationFrame(() => {
       domtoimage
-        .toPng(memeWrapper)
+        // Skip the <img> when it has no src (caption-only meme), otherwise
+        // dom-to-image fails trying to inline it.
+        .toPng(memeWrapper, {
+          filter: (node) => node !== memeImage || hasImage(),
+        })
         .then(async (dataUrl) => {
+          if (seq !== uploadSeq) return; // a newer render superseded this one
           const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
 
           try {
@@ -156,6 +178,7 @@ document.addEventListener("DOMContentLoaded", () => {
               body: JSON.stringify({ imageBase64: base64Data }),
             });
 
+            if (seq !== uploadSeq) return;
             if (uploadResponse.ok) {
               const uploadData = await uploadResponse.json();
               copyMessage.classList.remove("hidden");
@@ -174,46 +197,191 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function showError(message) {
+    errorMessage.innerText = message;
+    errorMessage.classList.toggle("hidden", !message);
+  }
+
+  async function postJson(url, body) {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || `Request to ${url} failed`);
+    }
+    return data;
+  }
+
+  function getCaptionMode() {
+    const checked = document.querySelector('input[name="caption-mode"]:checked');
+    return checked ? checked.value : "prompt";
+  }
+
+  function updateCaptionPlaceholder() {
+    captionInput.placeholder =
+      getCaptionMode() === "direct"
+        ? "Type the exact caption... (leave empty for no caption)"
+        : "What should the caption be about? (leave empty for no caption)";
+  }
+
+  captionModeInputs.forEach((input) =>
+    input.addEventListener("change", updateCaptionPlaceholder)
+  );
+
+  function setCaption(text) {
+    memeText.innerText = text;
+    memeTextWrapper.classList.toggle("hidden", !text);
+  }
+
+  function hasImage() {
+    return !memeImage.classList.contains("hidden") && !!memeImage.src;
+  }
+
+  function showImage(base64) {
+    memePlaceholder.classList.add("hidden");
+    memeImage.classList.remove("hidden");
+
+    return new Promise((resolve) => {
+      // Remove existing listener if there is one
+      if (currentLoadListener) {
+        memeImage.removeEventListener("load", currentLoadListener);
+      }
+      currentLoadListener = () => resolve();
+      memeImage.addEventListener("load", currentLoadListener, { once: true });
+      memeImage.src = `data:image/png;base64,${base64}`;
+    });
+  }
+
+  function showPlaceholder() {
+    memeImage.classList.add("hidden");
+    memeImage.removeAttribute("src");
+    memePlaceholder.classList.remove("hidden");
+  }
+
+  function showMeme() {
+    memeContainer.classList.remove("hidden");
+    editCaptionButton.classList.remove("hidden");
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
-    const prompt = promptInput.value;
-    if (!prompt) return;
+    const imagePrompt = imagePromptInput.value.trim();
+    const captionValue = captionInput.value.trim();
+    const captionMode = getCaptionMode();
 
+    showError("");
+    if (!imagePrompt && !captionValue) {
+      showError("Enter an image prompt, a caption, or both.");
+      return;
+    }
+
+    const needsServer = !!imagePrompt || captionMode === "prompt";
     setButtonState(true);
-    startLoadingBar();
+    if (needsServer) startLoadingBar();
 
     try {
-      const response = await fetch("/generate-meme", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
-      });
+      // Image and caption are generated independently, in parallel.
+      const imagePromise = imagePrompt
+        ? postJson("/generate-image", { prompt: imagePrompt })
+        : Promise.resolve(null);
 
-      if (response.ok) {
-        const data = await response.json();
-        memeText.innerText = data.memeText.memeText;
-
-        // Remove existing listener if there is one
-        if (currentLoadListener) {
-          memeImage.removeEventListener("load", currentLoadListener);
-        }
-
-        // Set new listener
-        currentLoadListener = handleImageLoad;
-        memeImage.addEventListener("load", currentLoadListener);
-
-        memeImage.src = `data:image/png;base64,${data.imageBase64}`;
-        memeContainer.classList.remove("hidden");
+      let captionPromise;
+      if (!captionValue) {
+        captionPromise = Promise.resolve("");
+      } else if (captionMode === "direct") {
+        captionPromise = Promise.resolve(captionValue);
       } else {
-        console.error("Failed to generate meme");
+        captionPromise = postJson("/generate-caption", {
+          prompt: captionValue,
+          imagePrompt,
+        }).then((data) => data.caption);
       }
+
+      const [imageResult, captionResult] = await Promise.allSettled([
+        imagePromise,
+        captionPromise,
+      ]);
+
+      const errors = [imageResult, captionResult]
+        .filter((r) => r.status === "rejected")
+        .map((r) => r.reason.message);
+
+      const newImage =
+        imageResult.status === "fulfilled" ? imageResult.value : null;
+      const newCaption =
+        captionResult.status === "fulfilled" ? captionResult.value : null;
+
+      // Nothing usable came back: leave the current meme untouched.
+      if (!newImage && (newCaption === null || (!newCaption && !hasImage()))) {
+        showError(errors.join(" ") || "Nothing to show.");
+        return;
+      }
+
+      if (newCaption !== null) setCaption(newCaption);
+
+      if (newImage) {
+        await showImage(newImage.imageBase64);
+      } else if (!hasImage()) {
+        // Caption-only meme with no picture yet: render on a plain panel.
+        showPlaceholder();
+      }
+
+      showMeme();
+      captureAndUpload();
+      showError(errors.join(" "));
     } catch (error) {
       console.error("Error:", error);
+      showError("Something went wrong generating the meme.");
     } finally {
-      stopLoadingBar();
+      if (needsServer) stopLoadingBar();
       setButtonState(false);
     }
   }
+
+  // --- Caption editing in place (re-renders without regenerating the image)
+  let captionBeforeEdit = "";
+
+  memeText.addEventListener("focus", () => {
+    captionBeforeEdit = memeText.innerText;
+  });
+
+  memeText.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      memeText.blur();
+    } else if (event.key === "Escape") {
+      memeText.innerText = captionBeforeEdit;
+      memeText.blur();
+    }
+  });
+
+  memeText.addEventListener("paste", (event) => {
+    // Keep the caption plain text.
+    event.preventDefault();
+    const text = (event.clipboardData || window.clipboardData).getData("text");
+    document.execCommand("insertText", false, text.replace(/\s+/g, " "));
+  });
+
+  memeText.addEventListener("blur", () => {
+    const text = memeText.innerText.replace(/\s+/g, " ").trim();
+    setCaption(text);
+    if (text !== captionBeforeEdit.trim()) captureAndUpload();
+  });
+
+  editCaptionButton.addEventListener("click", () => {
+    memeTextWrapper.classList.remove("hidden");
+    memeText.focus();
+    // Put the caret at the end of the existing caption.
+    const range = document.createRange();
+    range.selectNodeContents(memeText);
+    range.collapse(false);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  });
 
   memeForm.addEventListener("submit", handleSubmit);
 
