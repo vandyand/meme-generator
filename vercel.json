@@ -1,0 +1,11 @@
+{
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/generate-image", "destination": "/api" },
+    { "source": "/generate-caption", "destination": "/api" },
+    { "source": "/upload-meme", "destination": "/api" }
+  ],
+  "functions": {
+    "api/index.js": { "maxDuration": 300 }
+  }
+}

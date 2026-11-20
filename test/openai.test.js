@@ -32,14 +32,19 @@ const CHAT_URL = "https://api.openai.com/v1/chat/completions";
 const IMAGE_URL = "https://api.openai.com/v1/images/generations";
 
 describe("config", () => {
-  test("uses current default models when env vars are unset", () => {
+  test("defaults to the live site's models when env vars are unset", () => {
     const config = getConfig({});
     assert.equal(config.textModel, DEFAULT_TEXT_MODEL);
     assert.equal(config.imageModel, DEFAULT_IMAGE_MODEL);
     assert.equal(config.imageSize, "1024x1024");
-    assert.equal(config.temperature, undefined);
-    assert.notEqual(config.textModel, "gpt-3.5-turbo");
-    assert.notEqual(config.imageModel, "dall-e-3");
+    assert.equal(config.textModel, "gpt-4o");
+    assert.equal(config.imageModel, "gpt-image-1-mini");
+    assert.equal(config.temperature, 1.0);
+    assert.equal(config.imageQuality, "low");
+  });
+
+  test("an empty OPENAI_IMAGE_QUALITY sends no quality", () => {
+    assert.equal(getConfig({ OPENAI_IMAGE_QUALITY: "" }).imageQuality, undefined);
   });
 
   test("reads model overrides from env vars", () => {
@@ -69,11 +74,11 @@ describe("generateText", () => {
     assert.equal(req.url, CHAT_URL);
     assert.equal(req.body.model, "m1");
     assert.deepEqual(req.body.messages, [{ role: "user", content: "prompt" }]);
-    assert.equal("temperature" in req.body, false);
+    assert.equal(req.body.temperature, 1.0);
     assert.equal(req.options.headers.Authorization, "Bearer sk-test");
   });
 
-  test("sends temperature only when configured", async () => {
+  test("sends the configured temperature", async () => {
     const http = fakeHttp({
       [CHAT_URL]: { choices: [{ message: { content: "x" } }] },
     });

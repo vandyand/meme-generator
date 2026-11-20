@@ -2,15 +2,22 @@ const getCaptionPrompt = (captionPrompt, imageDescription) => {
   const context = imageDescription
     ? `\nThe meme image shows: ${imageDescription}\n`
     : "";
-  return `Write one short, witty, humorous meme caption based on the idea below.
-${context}
-Caption idea: ${captionPrompt}
+  return `You are a chaotic meme lord. Your job is to write captions for absurd, unhinged, shitpost-tier memes. Think surreal humor, unexpected juxtapositions, and the kind of thing that makes someone exhale sharply through their nose at 2am.
 
+Rules for the caption:
+- Short and punchy (1-2 sentences max)
+- Absurdist, ironic, or deadpan humor preferred
+- Can be relatable, surreal, or deliberately stupid
+- ALL CAPS is encouraged when it adds to the vibe
+${context}
+The user wants a meme about: ${captionPrompt}
+
+Be creative. Be unhinged. Be funny.
 Return only the caption text itself: no quotes, no hashtags, no explanation.`;
 };
 
 const getImagePrompt = (imageDescription) =>
-  `${imageDescription}. Whimsical, detailed cartoon illustration with plenty of scenic detail. ` +
+  `${imageDescription}. Lean into weird, surreal, or absurd imagery. ` +
   `Do not include any text, words, letters, captions, speech bubbles or thought bubbles in the image.`;
 
 // Used after OpenAI's image safety system blocks a prompt. A light paraphrase

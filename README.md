@@ -23,8 +23,8 @@ This project is a meme generator that uses OpenAI's text and image models to cre
    CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 
    # Optional overrides (defaults shown)
-   # OPENAI_TEXT_MODEL=gpt-6-luna
-   # OPENAI_IMAGE_MODEL=gpt-image-2.6-sunburst
+   # OPENAI_TEXT_MODEL=gpt-3.5-turbo
+   # OPENAI_IMAGE_MODEL=dall-e-3
    # OPENAI_IMAGE_SIZE=1024x1024
    # OPENAI_TEXT_TEMPERATURE=   (unset = model default; some reasoning models reject it)
    ```
