@@ -19,8 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const copyMessage = document.getElementById("copy-message");
   const loadingPercentage = document.getElementById("loading-percentage");
   const loadingMessageContainer = document.getElementById("loading-message");
-  let incrementDelay = 500; // Initial delay in ms
-  let incrementAmount = 5; // Initial increment percentage
+  const LOADING_TICK_MS = 500;
   let loadingMessages = [];
   let currentLoadingMessage = "";
   let messageInterval = null;
@@ -86,7 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let currentLoadListener = null;
   let loadingInterval = null;
-  let loadingProgress = 0;
+  let loadingState = LoadingProgress.initialLoadingState();
 
   function displayRandomLoadingMessage() {
     if (loadingMessages.length === 0) return;
@@ -110,32 +109,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function startLoadingBar() {
     loadingBarContainer.classList.remove("hidden");
-    loadingProgress = 0;
-    loadingBar.style.width = `${loadingProgress}%`;
-    loadingPercentage.innerText = `${loadingProgress}%`;
-    incrementDelay = 500;
-    incrementAmount = 5;
+    loadingState = LoadingProgress.initialLoadingState();
+    renderLoadingState();
 
-    {
-      {
-        // Start displaying loading messages
-        startLoadingMessages();
-      }
-    }
+    // Start displaying loading messages
+    startLoadingMessages();
 
+    clearInterval(loadingInterval);
     loadingInterval = setInterval(() => {
-      // Update progress with exponential slowdown
-      loadingProgress += incrementAmount;
-      if (loadingProgress >= 100) {
-        loadingProgress = 99;
-      }
-      loadingBar.style.width = `${loadingProgress}%`;
-      loadingPercentage.innerText = `${Math.floor(loadingProgress)}%`;
+      loadingState = LoadingProgress.nextLoadingState(loadingState);
+      renderLoadingState();
+    }, LOADING_TICK_MS);
+  }
 
-      // Decrease increment amount to slow down
-      incrementAmount = Math.max(1, incrementAmount * 0.95);
-      // Optionally adjust delay if needed
-    }, incrementDelay);
+  function renderLoadingState() {
+    loadingBar.style.width = `${LoadingProgress.loadingWidth(loadingState)}%`;
+    loadingPercentage.innerText = LoadingProgress.loadingText(loadingState);
   }
 
   function stopLoadingBar() {

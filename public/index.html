@@ -82,16 +82,18 @@
         </div>
         <p id="error-message" class="text-center text-red-600 hidden"></p>
       </form>
-      <div
-        id="loading-bar-container"
-        class="w-64 bg-gray-200 rounded-full h-4 mx-auto hidden mb-4 flex items-center"
-      >
-        <div
-          id="loading-bar"
-          class="bg-blue-500 h-4 rounded-full"
-          style="width: 0%"
-        ></div>
-        <span id="loading-percentage" class="ml-2 text-sm text-gray-700"
+      <div id="loading-bar-container" class="mx-auto hidden mb-4 text-center">
+        <div class="w-64 bg-gray-200 rounded-full h-4 mx-auto">
+          <div
+            id="loading-bar"
+            class="bg-blue-500 h-4 rounded-full"
+            style="width: 0%"
+          ></div>
+        </div>
+        <span
+          id="loading-percentage"
+          class="block mt-1 text-sm text-gray-700 break-all"
+          style="font-variant-numeric: tabular-nums"
           >0%</span
         >
       </div>
@@ -158,6 +160,7 @@
     </footer>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
+    <script src="/loading-progress.js"></script>
     <script src="/client.js"></script>
   </body>
 </html>
