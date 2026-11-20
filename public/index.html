@@ -122,6 +122,22 @@
           </figcaption>
         </div>
       </figure>
+      <div
+        id="adjusted-prompt"
+        class="max-w-xl mx-auto mt-2 text-sm text-gray-600 text-center hidden"
+      >
+        <span
+          >Prompt was adjusted to pass the safety filter:
+          <q id="adjusted-prompt-text" class="italic"></q
+        ></span>
+        <button
+          id="use-adjusted-prompt-button"
+          type="button"
+          class="text-blue-500 hover:underline ml-1"
+        >
+          Use this prompt
+        </button>
+      </div>
       <div id="meme-url-container" class="text-center mt-4 relative">
         <button
           id="edit-caption-button"

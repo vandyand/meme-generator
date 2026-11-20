@@ -9,6 +9,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const editCaptionButton = document.getElementById("edit-caption-button");
   const memePlaceholder = document.getElementById("meme-placeholder");
   const memeTextWrapper = document.getElementById("meme-text-wrapper");
+  const adjustedPrompt = document.getElementById("adjusted-prompt");
+  const adjustedPromptText = document.getElementById("adjusted-prompt-text");
+  const useAdjustedPromptButton = document.getElementById(
+    "use-adjusted-prompt-button"
+  );
   const generateButton = document.getElementById("generate-button");
   const memeImage = document.getElementById("meme-image");
   const memeText = document.getElementById("meme-text");
@@ -19,7 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const copyMessage = document.getElementById("copy-message");
   const loadingPercentage = document.getElementById("loading-percentage");
   const loadingMessageContainer = document.getElementById("loading-message");
-  const LOADING_TICK_MS = 500;
+  const LOADING_TICK_MS = 250;
   let loadingMessages = [];
   let currentLoadingMessage = "";
   let messageInterval = null;
@@ -85,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let currentLoadListener = null;
   let loadingInterval = null;
-  let loadingState = LoadingProgress.initialLoadingState();
+  let loadingStartedAt = 0;
 
   function displayRandomLoadingMessage() {
     if (loadingMessages.length === 0) return;
@@ -109,7 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function startLoadingBar() {
     loadingBarContainer.classList.remove("hidden");
-    loadingState = LoadingProgress.initialLoadingState();
+    loadingStartedAt = performance.now();
     renderLoadingState();
 
     // Start displaying loading messages
@@ -117,14 +122,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     clearInterval(loadingInterval);
     loadingInterval = setInterval(() => {
-      loadingState = LoadingProgress.nextLoadingState(loadingState);
       renderLoadingState();
     }, LOADING_TICK_MS);
   }
 
+  // Progress depends only on elapsed time, so throttled timers in a
+  // background tab don't slow it down.
   function renderLoadingState() {
-    loadingBar.style.width = `${LoadingProgress.loadingWidth(loadingState)}%`;
-    loadingPercentage.innerText = LoadingProgress.loadingText(loadingState);
+    const seconds = (performance.now() - loadingStartedAt) / 1000;
+    loadingBar.style.width = `${LoadingProgress.loadingWidth(seconds)}%`;
+    loadingPercentage.innerText = LoadingProgress.loadingText(seconds);
   }
 
   function stopLoadingBar() {
@@ -258,6 +265,18 @@ document.addEventListener("DOMContentLoaded", () => {
     memePlaceholder.classList.remove("hidden");
   }
 
+  // Shown when the server had to rewrite the image prompt to get past
+  // OpenAI's safety filter.
+  function showAdjustedPrompt(prompt) {
+    adjustedPromptText.innerText = prompt || "";
+    adjustedPrompt.classList.toggle("hidden", !prompt);
+  }
+
+  useAdjustedPromptButton.addEventListener("click", () => {
+    imagePromptInput.value = adjustedPromptText.innerText;
+    imagePromptInput.focus();
+  });
+
   function showMeme() {
     memeContainer.classList.remove("hidden");
     editCaptionButton.classList.remove("hidden");
@@ -320,6 +339,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (newCaption !== null) setCaption(newCaption);
 
       if (newImage) {
+        showAdjustedPrompt(newImage.adjustedPrompt);
         await showImage(newImage.imageBase64);
       } else if (!hasImage()) {
         // Caption-only meme with no picture yet: render on a plain panel.

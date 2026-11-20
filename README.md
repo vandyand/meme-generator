@@ -59,13 +59,15 @@ If you only give a caption and there is no picture yet, the caption is shown on 
 
 | Route | Body | Response |
 | --- | --- | --- |
-| `POST /generate-image` | `{ "prompt": string }` | `{ "imageBase64": string }` |
+| `POST /generate-image` | `{ "prompt": string }` | `{ "imageBase64": string, "adjustedPrompt"?: string }` |
 | `POST /generate-caption` | `{ "prompt": string, "imagePrompt"?: string }` | `{ "caption": string }` |
 | `POST /upload-meme` | `{ "imageBase64": string }` | `{ "imageUrl": string }` |
 
 An empty prompt returns `400`. The old combined `POST /generate-meme` route has been removed.
 
 When OpenAI rejects a request, the route returns `502` with a short reason the page can show, for example `The image request was refused: Your request was rejected as a result of our safety system.` The server log records OpenAI's error message and code, such as `content_policy_violation`, without the API key or request headers.
+
+If OpenAI's safety system blocks an image prompt (code `moderation_blocked`), the server asks the text model once to rewrite the prompt. The rewrite replaces named or recognisable characters, franchises, real people and living artists with generic, original ones. The server then retries the image once with the rewrite. If the retry works, the response includes `adjustedPrompt`, and the page shows it under the meme as "Prompt was adjusted to pass the safety filter: …", with a **Use this prompt** button that copies it into the image field. If the retry is also refused, the refusal is shown as usual. A blocked request can take a minute or two, so the server retries only once.
 
 If `CLOUDINARY_CLOUD_NAME` is not set, `/upload-meme` returns `503`. The page then skips uploads quietly, and the meme is shown without a copyable link.
 

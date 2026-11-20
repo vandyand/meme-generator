@@ -2,7 +2,20 @@ const path = require("path");
 const express = require("express");
 const bodyParser = require("body-parser");
 const openai = require("./lib/openai");
-const { getCaptionPrompt, getImagePrompt, cleanCaption } = require("./prompt");
+const {
+  getCaptionPrompt,
+  getImagePrompt,
+  getSafeImagePromptRewrite,
+  cleanRewrittenPrompt,
+  cleanCaption,
+} = require("./prompt");
+
+// OpenAI's image safety system refusal (HTTP 400, type
+// image_generation_user_error). Worth one retry with a rewritten prompt.
+const isModerationBlocked = (error) => {
+  const err = openai.toOpenAIError(error);
+  return err.status === 400 && err.code === "moderation_blocked";
+};
 
 const describeUploadError = (error) => {
   if (!error) return String(error);
@@ -52,11 +65,51 @@ const createApp = ({
       return res.status(400).json({ error: "An image prompt is required." });
     }
 
+    let firstError;
     try {
       const imageBase64 = await generateImage(getImagePrompt(prompt));
-      res.json({ imageBase64 });
+      return res.json({ imageBase64 });
     } catch (error) {
-      logOpenAIFailure("Error generating image", error);
+      firstError = error;
+    }
+
+    if (!isModerationBlocked(firstError)) {
+      logOpenAIFailure("Error generating image", firstError);
+      return res
+        .status(502)
+        .json({ error: openai.userFacingReason(firstError, "image") });
+    }
+
+    // Blocked by the safety system: rewrite the prompt once and retry once.
+    // No further retries, since a blocked call can take a minute or two.
+    logOpenAIFailure("Image prompt blocked (attempt 1 of 2)", firstError);
+
+    let adjustedPrompt;
+    try {
+      adjustedPrompt = cleanRewrittenPrompt(
+        await generateText(getSafeImagePromptRewrite(prompt))
+      );
+    } catch (error) {
+      logOpenAIFailure("Could not rewrite the blocked image prompt", error);
+      return res
+        .status(502)
+        .json({ error: openai.userFacingReason(firstError, "image") });
+    }
+
+    if (!adjustedPrompt || adjustedPrompt.toLowerCase() === prompt.toLowerCase()) {
+      console.error("Rewritten image prompt was empty or unchanged; not retrying.");
+      return res
+        .status(502)
+        .json({ error: openai.userFacingReason(firstError, "image") });
+    }
+
+    console.log("Retrying image with rewritten prompt (attempt 2 of 2):", adjustedPrompt);
+    try {
+      const imageBase64 = await generateImage(getImagePrompt(adjustedPrompt));
+      console.log("Image retry with rewritten prompt succeeded.");
+      res.json({ imageBase64, adjustedPrompt });
+    } catch (error) {
+      logOpenAIFailure("Image retry failed (attempt 2 of 2)", error);
       res.status(502).json({ error: openai.userFacingReason(error, "image") });
     }
   });
@@ -109,4 +162,4 @@ const createApp = ({
   return app;
 };
 
-module.exports = { createApp, describeUploadError };
+module.exports = { createApp, describeUploadError, isModerationBlocked };
