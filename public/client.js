@@ -152,12 +152,14 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   let uploadSeq = 0;
+  let uploadsDisabled = false;
 
   function captureAndUpload() {
     const seq = ++uploadSeq;
     // The copy link is stale until the new render has been uploaded.
     copyMessage.classList.add("hidden");
     delete copyMessage.dataset.url;
+    if (uploadsDisabled) return;
 
     // Use requestAnimationFrame to wait for the next repaint
     requestAnimationFrame(() => {
@@ -179,6 +181,12 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             if (seq !== uploadSeq) return;
+            if (uploadResponse.status === 503) {
+              // Uploads aren't configured on this server: skip them quietly.
+              uploadsDisabled = true;
+              console.info("Meme uploads are disabled on this server.");
+              return;
+            }
             if (uploadResponse.ok) {
               const uploadData = await uploadResponse.json();
               copyMessage.classList.remove("hidden");

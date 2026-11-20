@@ -4,6 +4,27 @@ const bodyParser = require("body-parser");
 const openai = require("./lib/openai");
 const { getCaptionPrompt, getImagePrompt, cleanCaption } = require("./prompt");
 
+const describeUploadError = (error) => {
+  if (!error) return String(error);
+  if (error.message) return error.message;
+  if (error.error?.message) return error.error.message;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+};
+
+const logOpenAIFailure = (label, error) => {
+  const err = openai.toOpenAIError(error);
+  // Only the safe summary is logged: never the axios config or headers.
+  console.error(`${label}:`, err.message, {
+    status: err.status,
+    code: err.code,
+    type: err.type,
+  });
+};
+
 const defaultUploadImage = (dataUri) => {
   const cloudinary = require("cloudinary").v2;
   return cloudinary.uploader.upload(dataUri, { upload_preset: "ml_default" });
@@ -17,6 +38,7 @@ const createApp = ({
   generateText = openai.generateText,
   generateImage = openai.generateImage,
   uploadImage = defaultUploadImage,
+  isUploadConfigured = () => !!process.env.CLOUDINARY_CLOUD_NAME,
 } = {}) => {
   const app = express();
 
@@ -34,8 +56,8 @@ const createApp = ({
       const imageBase64 = await generateImage(getImagePrompt(prompt));
       res.json({ imageBase64 });
     } catch (error) {
-      console.error("Error generating image:", error.message);
-      res.status(502).json({ error: "Error generating image" });
+      logOpenAIFailure("Error generating image", error);
+      res.status(502).json({ error: openai.userFacingReason(error, "image") });
     }
   });
 
@@ -50,12 +72,21 @@ const createApp = ({
       const text = await generateText(getCaptionPrompt(prompt, imagePrompt));
       res.json({ caption: cleanCaption(text) });
     } catch (error) {
-      console.error("Error generating caption:", error.message);
-      res.status(502).json({ error: "Error generating caption" });
+      logOpenAIFailure("Error generating caption", error);
+      res
+        .status(502)
+        .json({ error: openai.userFacingReason(error, "caption") });
     }
   });
 
   app.post("/upload-meme", async (req, res) => {
+    if (!isUploadConfigured()) {
+      return res.status(503).json({
+        error:
+          "Meme uploads are disabled: CLOUDINARY_CLOUD_NAME is not set on the server.",
+      });
+    }
+
     const imageBase64 = asTrimmedString(req.body.imageBase64);
     if (!imageBase64) {
       return res.status(400).json({ error: "imageBase64 is required." });
@@ -65,7 +96,7 @@ const createApp = ({
       const result = await uploadImage(`data:image/png;base64,${imageBase64}`);
       res.json({ imageUrl: result.secure_url });
     } catch (error) {
-      console.error("Error uploading to Cloudinary:", error.message);
+      console.error("Error uploading to Cloudinary:", describeUploadError(error));
       res.status(500).send("Error uploading to Cloudinary");
     }
   });
@@ -78,4 +109,4 @@ const createApp = ({
   return app;
 };
 
-module.exports = { createApp };
+module.exports = { createApp, describeUploadError };

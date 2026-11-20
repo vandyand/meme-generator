@@ -63,7 +63,11 @@ If you only give a caption and there is no picture yet, the caption is shown on 
 | `POST /generate-caption` | `{ "prompt": string, "imagePrompt"?: string }` | `{ "caption": string }` |
 | `POST /upload-meme` | `{ "imageBase64": string }` | `{ "imageUrl": string }` |
 
-An empty prompt returns `400`. An upstream OpenAI failure returns `502`. The old combined `POST /generate-meme` route has been removed.
+An empty prompt returns `400`. The old combined `POST /generate-meme` route has been removed.
+
+When OpenAI rejects a request, the route returns `502` with a short reason the page can show, for example `The image request was refused: Your request was rejected as a result of our safety system.` The server log records OpenAI's error message and code, such as `content_policy_violation`, without the API key or request headers.
+
+If `CLOUDINARY_CLOUD_NAME` is not set, `/upload-meme` returns `503`. The page then skips uploads quietly, and the meme is shown without a copyable link.
 
 ## Tests
 

@@ -6,6 +6,10 @@ const {
   getConfig,
   DEFAULT_TEXT_MODEL,
   DEFAULT_IMAGE_MODEL,
+  OpenAIError,
+  toOpenAIError,
+  userFacingReason,
+  redactSecrets,
 } = require("../lib/openai");
 
 // Minimal axios stand-in: records requests and replies with canned data.
@@ -111,5 +115,93 @@ describe("generateImage", () => {
   test("throws when no image data is returned", async () => {
     const http = fakeHttp({ [IMAGE_URL]: { data: [{}] } });
     await assert.rejects(generateImage("a dog", { http, env: {} }));
+  });
+});
+
+describe("OpenAI error handling", () => {
+  const KEY = "sk-proj-abcdefghijklmnop";
+  const httpError = (status, apiError) => {
+    const err = new Error(`Request failed with status code ${status}`);
+    err.config = { headers: { Authorization: `Bearer ${KEY}` } };
+    err.request = {};
+    err.response = { status, data: { error: apiError } };
+    return err;
+  };
+
+  test("generateImage rethrows HTTP errors as a safe OpenAIError", async () => {
+    const http = {
+      post: async () => {
+        throw httpError(400, {
+          message: "Your request was rejected as a result of our safety system.",
+          code: "content_policy_violation",
+          type: "invalid_request_error",
+        });
+      },
+    };
+    const err = await generateImage("x", { http, env: { OPENAI_API_KEY: KEY } }).catch(
+      (e) => e
+    );
+    assert.ok(err instanceof OpenAIError);
+    assert.equal(err.status, 400);
+    assert.equal(err.code, "content_policy_violation");
+    assert.match(err.message, /HTTP 400.*content_policy_violation.*safety system/);
+    assert.equal(err.config, undefined);
+    assert.equal(err.response, undefined);
+    assert.ok(!JSON.stringify(err).includes(KEY));
+    assert.ok(!err.message.includes(KEY));
+  });
+
+  test("generateText rethrows HTTP errors as a safe OpenAIError", async () => {
+    const http = {
+      post: async () => {
+        throw httpError(404, { message: "model not found", code: "model_not_found" });
+      },
+    };
+    await assert.rejects(generateText("x", { http, env: {} }), (e) => {
+      assert.ok(e instanceof OpenAIError);
+      assert.equal(e.code, "model_not_found");
+      return true;
+    });
+  });
+
+  test("redacts keys that appear in OpenAI's message", () => {
+    const err = toOpenAIError(
+      httpError(401, { message: `Incorrect API key provided: ${KEY}.` })
+    );
+    assert.ok(!err.message.includes(KEY));
+    assert.match(err.message, /\[redacted\]/);
+    assert.equal(redactSecrets(`Bearer ${KEY}`), "[redacted]");
+  });
+
+  test("userFacingReason covers each failure class", () => {
+    assert.equal(
+      userFacingReason(httpError(400, { message: "bad prompt" }), "image"),
+      "The image request was refused: bad prompt"
+    );
+    assert.equal(
+      userFacingReason(httpError(400, { code: "only_code" }), "image"),
+      "The image request was refused: only_code"
+    );
+    assert.equal(
+      userFacingReason(httpError(400, undefined), "image"),
+      "The image request was refused: HTTP 400"
+    );
+    assert.match(userFacingReason(httpError(401, {}), "image"), /credentials/);
+    assert.match(userFacingReason(httpError(429, {}), "caption"), /rate limit/);
+    assert.match(userFacingReason(httpError(503, {}), "caption"), /HTTP 503/);
+    const net = Object.assign(new Error("timeout"), { code: "ECONNABORTED" });
+    assert.match(userFacingReason(net, "image"), /could not reach OpenAI/);
+    assert.match(
+      userFacingReason(new Error("Unexpected image response from OpenAI"), "image"),
+      /unexpected response/
+    );
+  });
+
+  test("long reasons are truncated", () => {
+    const reason = userFacingReason(
+      httpError(400, { message: "x".repeat(1000) }),
+      "image"
+    );
+    assert.ok(reason.length <= 300);
   });
 });
